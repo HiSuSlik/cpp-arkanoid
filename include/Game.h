@@ -1,62 +1,41 @@
 #pragma once
 
+#include "Block.h"
+#include "Bonus.h"
+#include "GameTypes.h"
+
 #include <SFML/Graphics.hpp>
+#include <memory>
 #include <random>
-#include <string>
 #include <vector>
 
 class Game {
 public:
     Game();
+    ~Game();
+
     void run();
 
-    enum class BonusType {
-        None,
-        PaddleGrow,
-        PaddleShrink,
-        BallSpeedUp,
-        BallSlowDown,
-        Sticky,
-        BottomShield,
-        SecondBall
-    };
+    void registerBlockHit();
+    void notifyBlockDestroyed();
+    void spawnBonus(std::unique_ptr<FallingBonus> bonus);
 
-private:
-    enum class BlockType {
-        Unbreakable,
-        Bonus,
-        Speed,
-        Health
-    };
+    void growPaddle(float delta);
+    void shrinkPaddle(float delta);
+    void multiplyBallSpeeds(float factor);
+    void enableSticky(float durationSeconds);
+    void enableBottomShield();
+    void spawnSecondBallFromActive();
 
-    struct Ball {
-        sf::Vector2f position{};
-        sf::Vector2f velocity{};
-        float radius = 10.0f;
-        bool stuckToPaddle = false;
-        float stuckOffsetX = 0.0f;
-    };
+    void accelerateBall(Ball& ball, float factor);
 
-    struct Paddle {
-        sf::FloatRect rect{};
-        float speed = 0.0f;
-        float targetWidth = 0.0f;
-    };
+    const sf::Font& font() const;
+    bool hasFont() const;
 
-    struct Block {
-        sf::FloatRect rect{};
-        BlockType type = BlockType::Health;
-        int health = 1;
-        bool alive = true;
-        BonusType hiddenBonus = BonusType::None;
-    };
-
-    struct FallingBonus {
-        sf::Vector2f position{};
-        BonusType type = BonusType::None;
-        bool active = false;
-        float radius = 14.0f;
-    };
+    static float length(const sf::Vector2f& value);
+    static sf::Vector2f normalize(const sf::Vector2f& value);
+    static float dot(const sf::Vector2f& a, const sf::Vector2f& b);
+    static sf::Vector2f clampBallVelocity(const sf::Vector2f& velocity);
 
 private:
     void processEvents();
@@ -78,13 +57,7 @@ private:
     void handleBallBallCollisions();
     void handleBallLosses();
 
-    void spawnBonus(const sf::Vector2f& center, BonusType type);
-    void applyBonus(BonusType type);
     void launchStuckBalls();
-    void triggerSecondBall(const sf::Vector2f& position);
-
-    void markBlocksForDestruction(Block& block, Ball& ball);
-    void startBottomShield();
 
     void drawBlocks();
     void drawBalls();
@@ -92,17 +65,6 @@ private:
     void drawBonuses();
     void drawShield();
     void drawSidebar();
-    void drawBonusIcon(sf::RenderTarget& target, const sf::Vector2f& center, BonusType type, float scale) const;
-
-    sf::Color colorForBlock(const Block& block) const;
-    sf::String textForBonus(BonusType type) const;
-    char glyphForBonus(BonusType type) const;
-    BonusType randomBonusType();
-
-    static float length(const sf::Vector2f& value);
-    static sf::Vector2f normalize(const sf::Vector2f& value);
-    static float dot(const sf::Vector2f& a, const sf::Vector2f& b);
-    static sf::Vector2f clampBallVelocity(const sf::Vector2f& velocity);
 
 private:
     sf::RenderWindow m_window;
@@ -111,8 +73,8 @@ private:
 
     Paddle m_paddle;
     std::vector<Ball> m_balls;
-    std::vector<Block> m_blocks;
-    std::vector<FallingBonus> m_fallingBonuses;
+    std::vector<std::unique_ptr<Block>> m_blocks;
+    std::vector<std::unique_ptr<FallingBonus>> m_fallingBonuses;
 
     bool m_leftPressed = false;
     bool m_rightPressed = false;
